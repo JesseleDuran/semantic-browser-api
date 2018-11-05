@@ -3,6 +3,7 @@ package main
 import (
 	"net/http"
 
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/mysql"
@@ -28,12 +29,12 @@ func main() {
 
 	v1 := router.Group("/api/v1/favs")
 	{
-		v1.POST("/", addFav)
-		v1.GET("/:id", fetchSingleFav)
-		v1.GET("/:id/all", fetchAllFavsFromUser)
+		v1.POST("", addFav)
+		v1.GET("/all", fetchAllFavsFromUser)
 		v1.PUT("/:id", updateFav)
 		v1.DELETE("/:id", deleteFav)
 	}
+	router.Use(cors.Default())
 	router.Run()
 
 }
@@ -58,14 +59,15 @@ type (
 func addFav(c *gin.Context) {
 	fav := favModel{IDUser: c.PostForm("id-user"), Link: c.PostForm("link")}
 	db.Save(&fav)
-	c.JSON(http.StatusCreated, gin.H{"status": http.StatusCreated, "message": "Fav item added successfully", "resourceId": fav})
+	c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
+	c.JSON(http.StatusCreated, fav)
 }
 
 // fetchAllFavs fetch all favs
 func fetchAllFavsFromUser(c *gin.Context) {
 	var favs []favModel
 	var _favs []transformedFav
-	userID := c.Param("id")
+	userID := c.Query("id-user")
 
 	db.Where("id_user = ?", userID).Find(&favs)
 
@@ -78,7 +80,8 @@ func fetchAllFavsFromUser(c *gin.Context) {
 	for _, item := range favs {
 		_favs = append(_favs, transformedFav{ID: item.ID, Link: item.Link, IDUser: item.IDUser})
 	}
-	c.JSON(http.StatusOK, gin.H{"status": http.StatusOK, "data": _favs})
+	c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
+	c.JSON(http.StatusOK, _favs)
 }
 
 // fetchSingleFav fetch a single fav
@@ -126,5 +129,6 @@ func deleteFav(c *gin.Context) {
 	}
 
 	db.Delete(&fav)
-	c.JSON(http.StatusOK, gin.H{"status": http.StatusOK, "message": "fav deleted successfully!"})
+	c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
+	c.JSON(http.StatusOK, favID)
 }
